@@ -131,50 +131,82 @@ if submitted:
             st.warning("No hay datos para generar el albarán.")
         else:
             df = pd.DataFrame(datos_informe)
-            
-            # Generación del Excel Profesional
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                df.to_excel(writer, index=False, sheet_name='Albaran', startrow=5)
-                workbook = writer.book
-                worksheet = writer.sheets['Albaran']
-                
-                # Formatos
-                bold = workbook.add_format({'bold': True})
-                header_fmt = workbook.add_format({'bold': True, 'bg_color': '#003366', 'font_color': 'white'})
-                
-                # Encabezados de Obra
-                worksheet.write(0, 0, f"OPERARIO: {worker.upper()}", bold)
-                worksheet.write(1, 0, f"OBRA: {site.upper()}", bold)
-                worksheet.write(2, 0, f"FECHA: {date.strftime('%d/%m/%Y')}", bold)
-                
-                for col_num, value in enumerate(df.columns.values):
-                    worksheet.write(5, col_num, value, header_fmt)
-                
-                if obs:
-                    row_obs = len(df) + 7
-                    worksheet.write(row_obs, 0, "OBSERVACIONES / MATERIAL ROTO:", bold)
-                    worksheet.write(row_obs + 1, 0, obs)
-                
-                worksheet.set_column('B:B', 50)
 
-            st.success("✅ Excel preparado.")
-            st.download_button(
-                label="📥 DESCARGAR EXCEL",
-                data=output.getvalue(),
-                file_name=f"{site}_{date}_{worker}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+import base64  # Necesario para procesar el archivo para el botón de compartir
+
+# ... (Todo tu código anterior de partidas y capítulos se mantiene igual) ...
+
+if submitted:
+    if not worker or not site:
+        st.error("Rellene los datos básicos")
+    else:
+        # 1. Generar el Excel (Igual que antes)
+        final_list = []
+        for p in partidas_master:
+            cant = respuestas[p[0]]
+            if cant > 0:
+                final_list.append({"Cód": p[0], "Descripción": p[lang_idx], "Cant": cant, "Uni": p[4]})
+        
+        df = pd.DataFrame(final_list)
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='Albaran', startrow=5)
+            workbook = writer.book
+            worksheet = writer.sheets['Albaran']
+            bold = workbook.add_format({'bold': True})
+            header_fmt = workbook.add_format({'bold': True, 'bg_color': '#003366', 'font_color': 'white'})
             
-            # Link de WhatsApp
-            msg_wa = f"Hola, envío albarán de Gravity Works.\n🏗️ Obra: {site}\n👷 Operario: {worker}\n📅 Fecha: {date}"
-            encoded_msg = urllib.parse.quote(msg_wa)
-            ws_url = f"https://wa.me/?text={encoded_msg}"
+            worksheet.write(0, 0, f"OPERARIO: {worker.upper()}", bold)
+            worksheet.write(1, 0, f"OBRA: {site.upper()}", bold)
+            worksheet.write(2, 0, f"FECHA: {date.strftime('%d/%m/%Y')}", bold)
             
-            st.markdown(f"""
-                <a href="{ws_url}" target="_blank">
-                    <button style="width:100%; background-color:#25D366; color:white; border:none; padding:15px; border-radius:10px; font-weight:bold; cursor:pointer; margin-top:10px;">
-                        📱 2. AVISAR POR WHATSAPP
-                    </button>
-                </a>
-                """, unsafe_allow_html=True)
+            for col_num, value in enumerate(df.columns.values):
+                worksheet.write(5, col_num, value, header_fmt)
+            if obs:
+                worksheet.write(len(df)+7, 0, "OBSERVACIONES:", bold)
+                worksheet.write(len(df)+8, 0, obs)
+            worksheet.set_column('B:B', 45)
+
+        excel_bytes = output.getvalue()
+        file_name = f"Albaran_{site}_{date.strftime('%d%m')}.xlsx"
+        
+        # --- MAGIA DEL BOTÓN COMPARTIR ---
+        # Convertimos el Excel a un formato que el navegador entienda (Base64)
+        b64_excel = base64.b64encode(excel_bytes).decode()
+        
+        st.success("✅ Albarán listo.")
+
+        # Botón de Descarga normal (Como respaldo)
+        st.download_button("📥 1. Descargar Archivo", excel_bytes, file_name=file_name)
+
+        # BOTÓN COMPARTIR NATIVO (Solo para móviles)
+        # Este código le dice al móvil: "Abre tu menú de compartir con este archivo"
+        share_script = f"""
+            <script>
+            async function compartir() {{
+                const base64Data = "{b64_excel}";
+                const fileName = "{file_name}";
+                const res = await fetch(`data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${{base64Data}}`);
+                const blob = await res.blob();
+                const file = new File([blob], fileName, {{ type: blob.type }});
+
+                if (navigator.canShare && navigator.canShare({{ files: [file] }})) {{
+                    try {{
+                        await navigator.share({{
+                            files: [file],
+                            title: 'Albarán Gravity Works',
+                            text: 'Envío parte de trabajo adjunto.',
+                        }});
+                    }} catch (err) {{
+                        console.error("Error al compartir:", err);
+                    }}
+                }} else {{
+                    alert("Tu navegador no soporta la función de compartir archivos directamente.");
+                }}
+            }}
+            </script>
+            <button onclick="compartir()" style="width:100%; background-color:#ffcc00; color:#003366; border:none; padding:15px; border-radius:10px; font-weight:bold; cursor:pointer; font-size:16px;">
+                🔗 2. COMPARTIR (WhatsApp, Email...)
+            </button>
+        """
+        st.components.v1.html(share_script, height=100)
