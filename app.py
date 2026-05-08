@@ -110,34 +110,43 @@ with st.form("main_form"):
     st.divider()
     comentarios = st.text_area("Otros Conceptos / Material Roto")
 
+    # --- ESTO VA DENTRO DEL FORMULARIO ---
     submitted = st.form_submit_button(ui_texts[lang]["submit"])
 
-    if submitted:
-        if not worker_name or not obra_name:
-            st.error("Por favor, rellena el nombre del operario y la obra.")
+# --- ESTO VA FUERA DEL FORMULARIO (Saca la sangría/identación) ---
+if submitted:
+    if not worker_name or not obra_name:
+        st.error("Por favor, rellena el nombre del operario y la obra.")
+    else:
+        # 1. Crear DataFrame filtrando solo lo que tenga cantidad > 0
+        df = pd.DataFrame([
+            {"Partida": k, "Cantidad": v} for k, v in respuestas.items() if v > 0
+        ])
+        
+        if df.empty:
+            st.warning("No has introducido ninguna cantidad.")
         else:
-            # Crear DataFrame
-            df = pd.DataFrame([
-                {"Partida": k, "Cantidad": v} for k, v in respuestas.items() if v > 0
-            ])
-            
-            # Excel en memoria
+            # 2. Generar Excel en memoria
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 df.to_excel(writer, index=False, sheet_name='Albaran')
+                
+                # Formatos estéticos
                 workbook = writer.book
                 worksheet = writer.sheets['Albaran']
-                # Formato básico
                 header_format = workbook.add_format({'bold': True, 'bg_color': '#003366', 'font_color': 'white'})
+                
                 for col_num, value in enumerate(df.columns.values):
                     worksheet.write(0, col_num, value, header_format)
+                worksheet.set_column('A:A', 60) # Ajustar ancho de columna
             
-            # Nombre de archivo profesional
+            # 3. Nombre del archivo
             file_name = f"{obra_name.replace(' ','_')}_{fecha}_{worker_name.replace(' ','_')}.xlsx"
             
+            # 4. Mostrar éxito y Botón de Descarga (FUERA del form)
             st.success(ui_texts[lang]["success"])
             st.download_button(
-                label="📥 Descargar Albarán Excel",
+                label=f"📥 {ui_texts[lang]['submit']} (Excel)",
                 data=output.getvalue(),
                 file_name=file_name,
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
