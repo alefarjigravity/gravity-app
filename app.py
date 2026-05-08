@@ -94,7 +94,7 @@ with st.form("main_form"):
             p = partidas_master[idx]
             respuestas[p[0]] = st.number_input(f"{p[0]}. {p[lang_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
 
-    with st.expander(ui[lang_choice]["c5"], expanded=True):
+    with st.expander(ui[lang_choice]["c5"], expanded=False):
         for i in range(33, 38):
             p = partidas_master[i]
             respuestas[p[0]] = st.number_input(f"{p[0]}. {p[lang_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
