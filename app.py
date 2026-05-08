@@ -6,7 +6,7 @@ import io
 # Configuración de la aplicación
 st.set_page_config(page_title="Gravity Works - Albarán Digital", page_icon="🏗️")
 
-# --- BASE DE DATOS DE PARTIDAS (CORREGIDA) ---
+# --- BASE DE DATOS DE PARTIDAS ---
 partidas_info = [
     {"n": 1, "esp": "RED HORIZONTAL BAJO ENCOFRADO", "uni": "M2"},
     {"n": 2, "esp": "PROTECCIÓN PERIMETRAL CON BARANDILLAS + MORDAZAS", "uni": "ML"},
@@ -53,9 +53,9 @@ st.sidebar.image("https://www.gravityworks.eu/wp-content/uploads/2021/04/logo-gr
 lang = st.sidebar.selectbox("🌐 Idioma / Language", ["Español", "Marrouqui", "English"])
 
 ui = {
-    "Español": {"title": "Albarán de Obra", "worker": "Operario", "site": "Obra", "gen": "Generar Excel"},
-    "Marrouqui": {"title": "قائمة العمل", "worker": "عامل", "site": "ورشة", "gen": "إرسال"},
-    "English": {"title": "Work Report", "worker": "Worker", "site": "Site", "gen": "Generate Excel"}
+    "Español": {"title": "Albarán de Obra", "worker": "Operario", "site": "Obra", "gen": "Generar Excel", "obs": "Otros Conceptos / Material Roto"},
+    "Marrouqui": {"title": "قائمة العمل", "worker": "عامل", "site": "ورشة", "gen": "إرسال", "obs": "ملاحظات أخرى / مواد مكسورة"},
+    "English": {"title": "Work Report", "worker": "Worker", "site": "Site", "gen": "Generate Excel", "obs": "Other Concepts / Broken Material"}
 }
 
 st.title(f"🏗️ {ui[lang]['title']}")
@@ -69,41 +69,41 @@ with st.form("albaran_form"):
     st.divider()
     respuestas = {}
 
-    # --- CAPÍTULO 1: REDES Y SEGURIDAD ---
+    # --- CAPÍTULOS ---
     with st.expander("🛡️ CAP 1: REDES Y SEGURIDAD (1-10)", expanded=False):
         for i in range(0, 10):
             p = partidas_info[i]
             respuestas[p['n']] = st.number_input(f"{p['n']}. {p['esp']} ({p['uni']})", min_value=0.0, step=0.1, key=f"it_{p['n']}")
 
-    # --- CAPÍTULO 2: HORCAS Y VERTICALES ---
     with st.expander("🏗️ CAP 2: HORCAS Y VERTICALES (11-15)", expanded=False):
         for i in range(10, 15):
             p = partidas_info[i]
             respuestas[p['n']] = st.number_input(f"{p['n']}. {p['esp']} ({p['uni']})", min_value=0.0, step=0.1, key=f"it_{p['n']}")
 
-    # --- CAPÍTULO 3: PERÍMETROS Y ESCALERAS ---
     with st.expander("🚧 CAP 3: PERÍMETROS Y ESCALERAS", expanded=False):
-        indices_cap3 = [15, 16, 18, 25, 26, 27, 28, 29] # Partidas según lógica de obra
+        indices_cap3 = [15, 16, 18, 25, 26, 27, 28, 29]
         for idx in indices_cap3:
             p = partidas_info[idx]
             respuestas[p['n']] = st.number_input(f"{p['n']}. {p['esp']} ({p['uni']})", min_value=0.0, step=0.1, key=f"it_{p['n']}")
 
-    # --- CAPÍTULO 4: ANCLAJE Y OTROS ---
     with st.expander("🔩 CAP 4: ANCLAJE Y OTROS", expanded=False):
         indices_cap4 = [17, 19, 20, 21, 22, 23, 24, 30, 31, 32] 
         for idx in indices_cap4:
             p = partidas_info[idx]
             respuestas[p['n']] = st.number_input(f"{p['n']}. {p['esp']} ({p['uni']})", min_value=0.0, step=0.1, key=f"it_{p['n']}")
 
-    # --- CAPÍTULO 5: MANTENIMIENTO Y HORAS (ABIERTO POR DEFECTO) ---
     with st.expander("🕒 CAP 5: MANTENIMIENTO Y HORAS EXTRAS", expanded=True):
         for i in range(33, 38): 
             p = partidas_info[i]
             respuestas[p['n']] = st.number_input(f"{p['n']}. {p['esp']} ({p['uni']})", min_value=0.0, step=0.5, key=f"it_{p['n']}")
 
+    st.divider()
+    # CAMPO DE OBSERVACIONES AL FINAL (FUERA DE EXPANDERS)
+    observaciones = st.text_area(ui[lang]['obs'], placeholder="Escribe aquí cualquier incidencia...")
+
     submitted = st.form_submit_button(ui[lang]['gen'])
 
-# --- PROCESO FUERA DEL FORMULARIO ---
+# --- PROCESO ---
 if submitted:
     if not worker or not site:
         st.error("Rellena Operario y Obra")
@@ -114,8 +114,8 @@ if submitted:
             if val > 0:
                 final_data.append({"Ítem": p['n'], "Descripción": p['esp'], "Cantidad": val, "Unidad": p['uni']})
         
-        if not final_data:
-            st.warning("No hay datos introducidos")
+        if not final_data and not observaciones:
+            st.warning("No hay datos ni observaciones introducidas")
         else:
             df = pd.DataFrame(final_data)
             output = io.BytesIO()
@@ -124,8 +124,17 @@ if submitted:
                 wb = writer.book
                 ws = writer.sheets['GravityWorks']
                 fmt = wb.add_format({'bold': True, 'bg_color': '#003366', 'font_color': 'white'})
+                
+                # Escribir encabezados
                 for col, val in enumerate(df.columns):
                     ws.write(0, col, val, fmt)
+                
+                # Añadir las observaciones al final del Excel si existen
+                if observaciones:
+                    row_idx = len(df) + 2
+                    ws.write(row_idx, 0, "OBSERVACIONES / MATERIAL ROTO:", wb.add_format({'bold': True}))
+                    ws.write(row_idx + 1, 0, observaciones)
+                
                 ws.set_column('B:B', 50)
             
             fname = f"{site.replace(' ','_')}_{date}_{worker.replace(' ','_')}.xlsx"
