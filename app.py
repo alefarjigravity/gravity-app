@@ -6,7 +6,7 @@ import io
 # Configuración de la aplicación
 st.set_page_config(page_title="Gravity Works - Albarán Digital", page_icon="🏗️")
 
-# --- BASE DE DATOS DE PARTIDAS ---
+# --- BASE DE DATOS DE PARTIDAS (CORREGIDA) ---
 partidas_info = [
     {"n": 1, "esp": "RED HORIZONTAL BAJO ENCOFRADO", "uni": "M2"},
     {"n": 2, "esp": "PROTECCIÓN PERIMETRAL CON BARANDILLAS + MORDAZAS", "uni": "ML"},
@@ -37,7 +37,7 @@ partidas_info = [
     {"n": 27, "esp": "PERÍMETRO CON 'T' DE MURO", "uni": "ML"},
     {"n": 28, "esp": "MARQUESINA", "uni": "ML"},
     {"n": 29, "esp": "PERÍMETRO CON RED A PILARES", "uni": "ML"},
-    {"n": 30, "RED TIPO PANTALLA": "RED TIPO PANTALLA", "uni": "ML"},
+    {"n": 30, "esp": "RED TIPO PANTALLA", "uni": "ML"},
     {"n": 31, "esp": "MOSQUITERA", "uni": "M2"},
     {"n": 32, "esp": "LONA TIPO PLÁSTICO / RAFIA", "uni": "M2"},
     {"n": 33, "esp": "PROTECCIÓN BARILLAS CON SETAS", "uni": "UDS"},
@@ -83,21 +83,21 @@ with st.form("albaran_form"):
 
     # --- CAPÍTULO 3: PERÍMETROS Y ESCALERAS ---
     with st.expander("🚧 CAP 3: PERÍMETROS Y ESCALERAS", expanded=False):
-        indices_cap3 = [15, 16, 18, 25, 26, 27, 28, 29] # Partidas 16, 17, 19, 26, 27, 28, 29, 30
+        indices_cap3 = [15, 16, 18, 25, 26, 27, 28, 29] # Partidas según lógica de obra
         for idx in indices_cap3:
             p = partidas_info[idx]
             respuestas[p['n']] = st.number_input(f"{p['n']}. {p['esp']} ({p['uni']})", min_value=0.0, step=0.1, key=f"it_{p['n']}")
 
     # --- CAPÍTULO 4: ANCLAJE Y OTROS ---
     with st.expander("🔩 CAP 4: ANCLAJE Y OTROS", expanded=False):
-        indices_cap4 = [17, 19, 20, 21, 22, 23, 24, 30, 31, 32] # Partidas 18, 20, 21, 22, 23, 24, 25, 31, 32, 33
+        indices_cap4 = [17, 19, 20, 21, 22, 23, 24, 30, 31, 32] 
         for idx in indices_cap4:
             p = partidas_info[idx]
             respuestas[p['n']] = st.number_input(f"{p['n']}. {p['esp']} ({p['uni']})", min_value=0.0, step=0.1, key=f"it_{p['n']}")
 
-    # --- CAPÍTULO 5: MANTENIMIENTO Y HORAS (Abierto por defecto) ---
+    # --- CAPÍTULO 5: MANTENIMIENTO Y HORAS (ABIERTO POR DEFECTO) ---
     with st.expander("🕒 CAP 5: MANTENIMIENTO Y HORAS EXTRAS", expanded=True):
-        for i in range(33, 38): # Partidas 34 a 38
+        for i in range(33, 38): 
             p = partidas_info[i]
             respuestas[p['n']] = st.number_input(f"{p['n']}. {p['esp']} ({p['uni']})", min_value=0.0, step=0.5, key=f"it_{p['n']}")
 
@@ -126,7 +126,7 @@ if submitted:
                 fmt = wb.add_format({'bold': True, 'bg_color': '#003366', 'font_color': 'white'})
                 for col, val in enumerate(df.columns):
                     ws.write(0, col, val, fmt)
-                ws.set_column('B:B', 50) # Ancho para descripción
+                ws.set_column('B:B', 50)
             
             fname = f"{site.replace(' ','_')}_{date}_{worker.replace(' ','_')}.xlsx"
             st.success("¡Albarán generado!")
