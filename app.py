@@ -9,16 +9,15 @@ from PIL import Image
 import os
 
 # Configuración de la App
-st.set_page_config(page_title="Gravity Works Pro+", page_icon="🏗️")
+st.set_page_config(page_title="Gravity Works Pro", page_icon="🏗️", layout="centered")
 
-# --- FUNCIÓN PARA CARGAR LOGO LOCAL ---
+# --- CARGA DEL LOGO (logo.png en GitHub) ---
 def cargar_logo():
-    # Buscamos el archivo logo.png en tu carpeta de GitHub
     if os.path.exists("logo.png"):
         return "logo.png"
     return None
 
-# --- BASE DE DATOS (38 PARTIDAS) ---
+# --- BASE DE DATOS MAESTRA (38 PARTIDAS) ---
 partidas_master = [
     [1, "RED HORIZONTAL BAJO ENCOFRADO", "شبكة أفقية تحت القوالب", "UNDER-SLAB HORIZONTAL NET", "M2"],
     [2, "PROTECCIÓN PERIMETRAL CON BARANDILLAS + MORDAZAS", "حماية المحيط بالدرابزين + المشابك", "PERIMETER PROTECTION + CLAMPS", "ML"],
@@ -62,166 +61,135 @@ partidas_master = [
 
 # --- TRADUCCIONES UI ---
 ui = {
-    "Español": {"t": "Albarán Digital", "op": "Operario", "ob": "Obra", "btn": "GENERAR DOCUMENTOS", "obs": "Observaciones", "sign": "Firma del Responsable", "res_name": "Nombre del Responsable (Aclaración)", "c1": "CAP 1: REDES Y SEGURIDAD", "c2": "CAP 2: HORCAS Y VERTICALES", "c3": "CAP 3: PERÍMETROS", "c4": "CAP 4: ANCLAJES Y OTROS", "c5": "CAP 5: HORAS EXTRAS"},
-    "Marrouqui": {"t": "قائمة العمل الرقمية", "op": "عامل", "ob": "ورشة", "btn": "إنشاء المستندات", "obs": "ملاحظات", "sign": "توقيع المسؤول", "res_name": "اسم المسؤول (توضيح)", "c1": "1: الحماية", "c2": "2: المشانق", "c3": "3: المحيط", "c4": "4: المراسي", "c5": "5: ساعات إضافية"},
-    "English": {"t": "Digital Report", "op": "Worker", "ob": "Site", "btn": "GENERATE DOCUMENTS", "obs": "Notes", "sign": "Responsible Signature", "res_name": "Responsible Name (Print)", "c1": "CAP 1: SAFETY NETS", "c2": "CAP 2: GALLOWS", "c3": "CAP 3: PERIMETERS", "c4": "CAP 4: ANCHORS", "c5": "CAP 5: OVERTIME"}
+    "Español": {"t": "Albarán Digital", "op": "Operario", "ob": "Obra", "btn": "GENERAR DOCUMENTOS", "res_name": "Nombre Responsable", "c1": "CAP 1: REDES", "c2": "CAP 2: HORCAS", "c3": "CAP 3: PERÍMETROS", "c4": "CAP 4: OTROS", "c5": "CAP 5: HORAS"},
+    "Marrouqui": {"t": "قائمة العمل", "op": "عامل", "ob": "ورشة", "btn": "إنشاء المستندات", "res_name": "اسم المسؤول", "c1": "1: شبكات", "c2": "2: مشانق", "c3": "3: محيط", "c4": "4: آحرون", "c5": "5: ساعات"},
+    "English": {"t": "Digital Report", "op": "Worker", "ob": "Site", "btn": "GENERATE DOCUMENTS", "res_name": "Responsible Name", "c1": "CAP 1: NETS", "c2": "CAP 2: GALLOWS", "c3": "CAP 3: PERIMETERS", "c4": "CAP 4: OTHERS", "c5": "CAP 5: HOURS"}
 }
 
-lang = st.sidebar.selectbox("🌐 Seleccione Idioma", ["Español", "Marrouqui", "English"])
+lang = st.sidebar.selectbox("🌐 Idioma / Language", ["Español", "Marrouqui", "English"])
 l_idx = {"Español": 1, "Marrouqui": 2, "English": 3}[lang]
 
-# --- CABECERA APP CON LOGO LOCAL ---
+# Cabecera con Logo
 path_logo = cargar_logo()
-col_logo, col_title = st.columns([1, 4])
-with col_logo:
-    if path_logo:
-        st.image(path_logo, width=120)
-with col_title:
-    st.title(ui[lang]["t"])
+col_l, col_t = st.columns([1, 4])
+with col_l:
+    if path_logo: st.image(path_logo, width=100)
+with col_t: st.title(ui[lang]["t"])
 
-# --- DATOS GENERALES ---
-c1, c2 = st.columns(2)
-worker = c1.text_input(ui[lang]["op"])
-site = c2.text_input(ui[lang]["ob"])
+# Datos de entrada
+c_op, c_ob = st.columns(2)
+worker = c_op.text_input(ui[lang]["op"])
+site = c_ob.text_input(ui[lang]["ob"])
 date = st.date_input("Fecha", datetime.now())
 
 st.divider()
-res_vals = {}
+resp = {}
 
-# --- CAPÍTULOS (TODOS CERRADOS) ---
-with st.expander(ui[lang]["c1"], expanded=False):
-    for i in range(0, 10):
-        p = partidas_master[i]
-        res_vals[p[0]] = st.number_input(f"{p[0]}. {p[l_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
+# --- CAPÍTULOS (TODOS CERRADOS POR DEFECTO) ---
+def render_cap(titulo, indices):
+    with st.expander(titulo, expanded=False):
+        for i in indices:
+            p = partidas_master[i]
+            resp[p[0]] = st.number_input(f"{p[0]}. {p[l_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
 
-with st.expander(ui[lang]["c2"], expanded=False):
-    for i in range(10, 15):
-        p = partidas_master[i]
-        res_vals[p[0]] = st.number_input(f"{p[0]}. {p[l_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
+render_cap(ui[lang]["c1"], range(0, 10))
+render_cap(ui[lang]["c2"], range(10, 15))
+render_cap(ui[lang]["c3"], [15, 16, 18, 25, 26, 27, 28, 29])
+render_cap(ui[lang]["c4"], [17, 19, 20, 21, 22, 23, 24, 30, 31, 32])
+render_cap(ui[lang]["c5"], range(33, 38))
 
-with st.expander(ui[lang]["c3"], expanded=False):
-    idx_c3 = [15, 16, 18, 25, 26, 27, 28, 29]
-    for idx in idx_c3:
-        p = partidas_master[idx]
-        res_vals[p[0]] = st.number_input(f"{p[0]}. {p[l_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
+obs = st.text_area("Observaciones")
 
-with st.expander(ui[lang]["c4"], expanded=False):
-    idx_c4 = [17, 19, 20, 21, 22, 23, 24, 30, 31, 32]
-    for idx in idx_c4:
-        p = partidas_master[idx]
-        res_vals[p[0]] = st.number_input(f"{p[0]}. {p[l_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
+# Firma y Aclaración
+st.subheader("Firma y Conformidad")
+canvas_result = st_canvas(stroke_width=3, stroke_color="#000", background_color="#eee", height=150, width=400, key="canvas")
+resp_name = st.text_input(ui[lang]["res_name"])
 
-with st.expander(ui[lang]["c5"], expanded=False):
-    for i in range(33, 38):
-        p = partidas_master[i]
-        res_vals[p[0]] = st.number_input(f"{p[0]}. {p[l_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
-
-obs = st.text_area(ui[lang]["obs"])
-
-# --- FIRMA ---
-st.subheader(ui[lang]["sign"])
-canvas_result = st_canvas(
-    stroke_width=3, stroke_color="#000000", background_color="#eeeeee",
-    height=150, width=400, drawing_mode="freedraw", key="canvas"
-)
-resp_name = st.text_input(ui[lang]["res_name"], placeholder="Escriba su nombre completo")
-
-# --- FUNCIÓN COMPARTIR ---
-def create_share_button(file_bytes, file_name, label, color):
+# --- FUNCIÓN HÍBRIDA COMPARTIR (iPhone) / DESCARGAR (Android) ---
+def get_share_js(file_bytes, file_name, label, color):
     b64 = base64.b64encode(file_bytes).decode()
     b_id = "".join(filter(str.isalnum, label))
-    html = f"""
+    return f"""
         <script>
-        async function share_{b_id}() {{
+        async function runShare_{b_id}() {{
             const b64Data = "{b64}";
             const fileName = "{file_name}";
             const res = await fetch(`data:application/octet-stream;base64,${{b64Data}}`);
             const blob = await res.blob();
             const file = new File([blob], fileName, {{ type: blob.type }});
-            if (navigator.share) {{
-                try {{ await navigator.share({{ files: [file], title: 'Gravity Works' }}); }}
-                catch (err) {{ console.error(err); }}
-            }} else {{ alert("Usa un móvil para compartir"); }}
+
+            // Si es iPhone o soporta compartir, intenta el menú nativo
+            if (navigator.share && navigator.canShare && navigator.canShare({{ files: [file] }})) {{
+                try {{
+                    await navigator.share({{ files: [file], title: 'Gravity Works', text: 'Adjunto albarán de obra.' }});
+                }} catch (e) {{
+                    downloadFallback();
+                }}
+            }} else {{
+                downloadFallback();
+            }}
+
+            function downloadFallback() {{
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = fileName;
+                link.click();
+            }}
         }}
         </script>
-        <button onclick="share_{b_id}()" style="width:100%; background-color:{color}; color:white; border:none; padding:15px; border-radius:10px; font-weight:bold; cursor:pointer; font-size:16px; margin-bottom:10px;">{label}</button>
+        <button onclick="runShare_{b_id}()" style="width:100%; background-color:{color}; color:white; border:none; padding:15px; border-radius:10px; font-weight:bold; cursor:pointer; font-size:16px; margin-bottom:10px;">
+            {label}
+        </button>
     """
-    return st.components.v1.html(html, height=80)
 
-# --- BOTÓN DE PROCESO ---
 if st.button(ui[lang]["btn"]):
     if not worker or not site or not resp_name:
-        st.error("Rellene Operario, Obra y Nombre del Responsable")
+        st.error("Rellene Operario, Obra y Nombre del Responsable.")
     elif canvas_result.image_data is None:
-        st.warning("Debe firmar antes de continuar.")
+        st.warning("Debe firmar el albarán.")
     else:
-        # Filtrar datos (Siempre en Español para Docs)
-        df_rows = [{"Cód": p[0], "Descripción": p[1], "Cant": res_vals[p[0]], "Uni": p[4]} for p in partidas_master if res_vals[p[0]] > 0]
-        df = pd.DataFrame(df_rows)
+        # 1. Datos siempre en ESPAÑOL para documentos
+        df = pd.DataFrame([{"Cód": p[0], "Descripción": p[1], "Cant": resp[p[0]], "Uni": p[4]} for p in partidas_master if resp[p[0]] > 0])
         
-        # Procesar firma
+        # 2. Firma
         img_f = Image.fromarray(canvas_result.image_data.astype('uint8'), 'RGBA')
         img_io = io.BytesIO()
         img_f.save(img_io, format="PNG")
         
         # --- EXCEL ---
-        xls_io = io.BytesIO()
-        with pd.ExcelWriter(xls_io, engine='xlsxwriter') as writer:
+        xlsx_io = io.BytesIO()
+        with pd.ExcelWriter(xlsx_io, engine='xlsxwriter') as writer:
             df.to_excel(writer, index=False, sheet_name='Albaran', startrow=5)
             wb, ws = writer.book, writer.sheets['Albaran']
             bold = wb.add_format({'bold': True})
-            
-            # Logo en Excel
-            if path_logo:
-                ws.insert_image('D1', path_logo, {'x_scale': 0.18, 'y_scale': 0.18})
-            
+            if path_logo: ws.insert_image('D1', path_logo, {'x_scale': 0.15, 'y_scale': 0.15})
             ws.write(0, 0, f"OPERARIO: {worker.upper()}", bold)
             ws.write(1, 0, f"OBRA: {site.upper()}", bold)
-            ws.write(2, 0, f"FECHA: {date.strftime('%d/%m/%Y')}", bold)
-            
-            # Firma y Aclaración
-            ws.write(len(df)+10, 0, "FIRMA DEL RESPONSABLE:", bold)
-            ws.insert_image(len(df)+11, 0, 'f.png', {'image_data': img_io, 'x_scale': 0.4, 'y_scale': 0.4})
-            ws.write(len(df)+17, 0, f"ACLARACIÓN: {resp_name.upper()}", bold)
-            ws.set_column('B:B', 50)
+            ws.write(2, 0, f"FECHA: {date}", bold)
+            ws.write(len(df)+8, 0, f"RESPONSABLE: {resp_name.upper()}", bold)
+            ws.insert_image(len(df)+9, 0, 'f.png', {'image_data': img_io, 'x_scale': 0.4, 'y_scale': 0.4})
+            ws.set_column('B:B', 45)
         
         # --- PDF ---
         pdf = FPDF()
         pdf.add_page()
-        
-        # Logo en PDF
-        if path_logo:
-            pdf.image(path_logo, x=10, y=8, w=35)
-        
-        pdf.set_font("Arial", 'B', 14)
-        pdf.set_x(50)
-        pdf.cell(0, 10, "GRAVITY WORKS - ALBARAN DE TRABAJO", 0, 1, 'L')
-        
-        pdf.ln(10)
-        pdf.set_font("Arial", '', 10)
-        pdf.cell(0, 7, f"Operario: {worker}", 0, 1)
-        pdf.cell(0, 7, f"Obra: {site}", 0, 1)
-        pdf.cell(0, 7, f"Fecha: {date}", 0, 1)
+        if path_logo: pdf.image(path_logo, x=10, y=8, w=30)
+        pdf.set_font("Arial", 'B', 14); pdf.set_x(45)
+        pdf.cell(0, 10, "GRAVITY WORKS - ALBARAN DE TRABAJO", 0, 1)
+        pdf.set_font("Arial", '', 10); pdf.ln(10)
+        pdf.cell(0, 7, f"Obra: {site} | Operario: {worker}", 0, 1)
         pdf.ln(5)
-        
         for _, r in df.iterrows():
             pdf.cell(0, 7, f"{r['Cód']} - {r['Descripción']}: {r['Cant']} {r['Uni']}", 0, 1)
-        
-        pdf.ln(5)
-        pdf.multi_cell(0, 5, f"Observaciones: {obs}")
-        
-        # Firma PDF
-        with open("tf.png", "wb") as f: f.write(img_io.getvalue())
-        pdf.ln(10)
-        pdf.cell(0, 7, "Firma del Responsable:", 0, 1)
-        pdf.image("tf.png", w=50)
-        pdf.set_font("Arial", 'B', 10)
-        pdf.cell(0, 10, f"Aclaracion: {resp_name.upper()}", 0, 1)
-        
-        pdf_out = pdf.output(dest='S').encode('latin1')
+        pdf.ln(5); pdf.multi_cell(0, 5, f"Observaciones: {obs}")
+        with open("temp_f.png", "wb") as f: f.write(img_io.getvalue())
+        pdf.image("temp_f.png", w=45)
+        pdf.set_font("Arial", 'B', 10); pdf.cell(0, 10, f"Responsable: {resp_name.upper()}", 0, 1)
+        pdf_bytes = pdf.output(dest='S').encode('latin1')
 
-        st.success("✅ ¡Documentos generados!")
-        f_name = f"{worker.replace(' ','_')}_{site.replace(' ','_')}_{date.strftime('%d-%m-%Y')}"
+        st.success("✅ Documentos listos. Pulsa para compartir o descargar:")
+        f_name = f"{worker.replace(' ','_')}_{site.replace(' ','_')}_{date.strftime('%d-%m')}"
         
-        create_share_button(xls_io.getvalue(), f"{f_name}.xlsx", "📊 COMPARTIR EXCEL (Administración)", "#003366")
-        create_share_button(pdf_out, f"{f_name}.pdf", "📄 COMPARTIR PDF (Cliente)", "#c0392b")
+        # MOSTRAR BOTONES HÍBRIDOS
+        st.components.v1.html(get_share_js(xlsx_io.getvalue(), f"{f_name}.xlsx", "📊 COMPARTIR EXCEL (Administración)", "#003366"), height=75)
+        st.components.v1.html(get_share_js(pdf_bytes, f"{f_name}.pdf", "📄 COMPARTIR PDF (Cliente)", "#c0392b"), height=75)
