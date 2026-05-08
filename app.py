@@ -6,8 +6,7 @@ import urllib.parse
 
 st.set_page_config(page_title="Gravity Works - Pro", page_icon="🏗️")
 
-# --- BASE DE DATOS TRILINGÜE ---
-# Estructura: [ID, Español, Árabe, Inglés, Unidad]
+# --- BASE DE DATOS TRILINGÜE (38 PARTIDAS) ---
 partidas_master = [
     [1, "RED HORIZONTAL BAJO ENCOFRADO", "شبكة أفقية تحت القوالب", "UNDER-SLAB HORIZONTAL NET", "M2"],
     [2, "PROTECCIÓN PERIMETRAL CON BARANDILLAS + MORDAZAS", "حماية المحيط بالدرابزين + المشابك", "PERIMETER PROTECTION + CLAMPS", "ML"],
@@ -40,100 +39,4 @@ partidas_master = [
     [29, "PERÍMETRO CON RED A PILARES", "المحيط مع شبكة للأعمدة", "COLUMN NET PERIMETER", "ML"],
     [30, "RED TIPO PANTALLA", "شبكة نوع الشاشة", "SCREEN TYPE NET", "ML"],
     [31, "MOSQUITERA", "ناموسية", "MOSQUITO NET", "M2"],
-    [32, "LONA TIPO PLÁSTICO / RAFIA", "قماش بلاستيك", "PLASTIC TARP", "M2"],
-    [33, "PROTECCIÓN BARILLAS CON SETAS", "حماية القضبان بالفطر", "REBAR CAPS", "UDS"],
-    [34, "HORAS DE MANTENIMIENTO", "ساعات الصيانة", "MAINTENANCE HOURS", "UDS"],
-    [35, "HORAS EXTRAS (FUERA DE JORNADA)", "ساعات إضافية", "OVERTIME HOURS", "UDS"],
-    [36, "HORAS EXTRAS FESTIVAS", "إضافي أعياد", "HOLIDAY OVERTIME", "UDS"],
-    [37, "HORAS EXTRAS NOCTURNAS", "إضافي ليلي", "NIGHT OVERTIME", "UDS"],
-    [38, "HORAS EXTRAS FESTIVAS NOCTURNAS", "إضافي ليلي أعياد", "NIGHT HOLIDAY OVERTIME", "UDS"]
-]
-
-# --- LÓGICA DE INTERFAZ ---
-st.sidebar.image("https://www.gravityworks.eu/wp-content/uploads/2021/04/logo-gravity-works.png", width=180)
-lang_choice = st.sidebar.selectbox("🌐 Seleccione Idioma", ["Español", "Marrouqui", "English"])
-
-lang_idx = {"Español": 1, "Marrouqui": 2, "English": 3}[lang_choice]
-
-ui = {
-    "Español": {"t": "Albarán Digital", "op": "Operario", "ob": "Obra", "btn": "1. Generar Excel", "ws": "2. Avisar por WhatsApp", "obs": "Observaciones"},
-    "Marrouqui": {"t": "قائمة العمل الرقمية", "op": "عامل", "ob": "ورشة", "btn": "1. إنشاء إكسل", "ws": "2. واتساب", "obs": "ملاحظات"},
-    "English": {"t": "Digital Report", "op": "Worker", "ob": "Site", "btn": "1. Generate Excel", "ws": "2. Send WhatsApp", "obs": "Notes"}
-}
-
-st.title(ui[lang_choice]["t"])
-
-with st.form("main_form"):
-    c1, c2 = st.columns(2)
-    worker = c1.text_input(ui[lang_choice]["op"])
-    site = c2.text_input(ui[lang_choice]["ob"])
-    date = st.date_input("Fecha", datetime.now())
-    
-    st.divider()
-    respuestas = {}
-    
-    # Capítulos agrupados
-    with st.expander("📂 Partidas / Items", expanded=True):
-        for p in partidas_master:
-            respuestas[p[0]] = st.number_input(f"{p[0]}. {p[lang_idx]} ({p[4]})", min_value=0.0, step=0.1, key=f"p_{p[0]}")
-
-    obs = st.text_area(ui[lang_choice]["obs"])
-    submitted = st.form_submit_button(ui[lang_choice]["btn"])
-
-if submitted:
-    if not worker or not site:
-        st.error("Rellene los datos básicos")
-    else:
-        # Filtrar datos con valor > 0
-        final_list = []
-        for p in partidas_master:
-            cant = respuestas[p[0]]
-            if cant > 0:
-                final_list.append({"Cód": p[0], "Descripción": p[lang_idx], "Cant": cant, "Uni": p[4]})
-        
-        df = pd.DataFrame(final_list)
-        
-        # EXCEL CON ENCABEZADOS DE PERSONA Y OBRA
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            # Crear una hoja vacía para escribir manualmente los encabezados
-            df.to_excel(writer, index=False, sheet_name='Albaran', startrow=5)
-            
-            workbook = writer.book
-            worksheet = writer.sheets['Albaran']
-            
-            # Formatos
-            bold = workbook.add_format({'bold': True, 'font_size': 12})
-            header_fmt = workbook.add_format({'bold': True, 'bg_color': '#003366', 'font_color': 'white'})
-            
-            # Escribir los datos del punto 3
-            worksheet.write(0, 0, f"OPERARIO: {worker.upper()}", bold)
-            worksheet.write(1, 0, f"OBRA: {site.upper()}", bold)
-            worksheet.write(2, 0, f"FECHA: {date.strftime('%d/%m/%Y')}", bold)
-            
-            # Formatear tabla de partidas
-            for col_num, value in enumerate(df.columns.values):
-                worksheet.write(5, col_num, value, header_fmt)
-            
-            if obs:
-                worksheet.write(len(df)+7, 0, "OBSERVACIONES:", bold)
-                worksheet.write(len(df)+8, 0, obs)
-            
-            worksheet.set_column('B:B', 45)
-
-        st.success("✅ Excel generado con encabezados.")
-        st.download_button("📥 DESCARGAR EXCEL", output.getvalue(), file_name=f"{site}_{date}.xlsx")
-        
-        # BOTÓN DE WHATSAPP (Punto 2)
-        msg = f"Hola, envío albarán de Gravity Works.\n🏗️ Obra: {site}\n👷 Operario: {worker}\n📅 Fecha: {date}"
-        encoded_msg = urllib.parse.quote(msg)
-        # Puedes poner un número fijo aquí, ej: phone=34600000000
-        ws_url = f"https://wa.me/?text={encoded_msg}"
-        
-        st.markdown(f"""
-            <a href="{ws_url}" target="_blank">
-                <button style="width:100%; background-color:#25D366; color:white; border:none; padding:15px; border-radius:10px; font-weight:bold; cursor:pointer;">
-                    📱 2. AVISAR POR WHATSAPP (A Gerencia)
-                </button>
-            </a>
-            """, unsafe_allow_html=True)
+    [32, "LONA TIPO PLÁSTICO / RAFIA", "قماش بلا
