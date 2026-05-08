@@ -4,150 +4,130 @@ from datetime import datetime
 import io
 
 # Configuración de la aplicación
-st.set_page_config(page_title="Gravity Works - Digital Albaran", page_icon="🏗️", layout="centered")
+st.set_page_config(page_title="Gravity Works - Albarán Digital", page_icon="🏗️")
 
-# CSS personalizado para que se vea más profesional
-st.markdown("""
-    <style>
-    .main { background-color: #f5f7f9; }
-    .stButton>button { width: 100%; background-color: #004a99; color: white; height: 3em; font-weight: bold; }
-    .stDownloadButton>button { width: 100%; background-color: #28a745; color: white; height: 3em; font-weight: bold; }
-    </style>
-    """, unsafe_allow_html=True)
+# --- BASE DE DATOS DE PARTIDAS ---
+partidas_info = [
+    {"n": 1, "esp": "RED HORIZONTAL BAJO ENCOFRADO", "uni": "M2"},
+    {"n": 2, "esp": "PROTECCIÓN PERIMETRAL CON BARANDILLAS + MORDAZAS", "uni": "ML"},
+    {"n": 3, "esp": "PROTECCIÓN PERIMETRAL CON BARANDILLAS + BASES", "uni": "ML"},
+    {"n": 4, "esp": "PROTECCIÓN PERIMETRAL CON BARANDILLAS + BASES (HUECOS)", "uni": "ML"},
+    {"n": 5, "esp": "PROTECCIÓN PERIMETRAL CON BARANDILLAS + BASQUIS (HUECOS)", "uni": "ML"},
+    {"n": 6, "esp": "PROTECCIÓN PERIMETRAL CON BARANDILLAS + BASQUIS (MURO)", "uni": "ML"},
+    {"n": 7, "esp": "PROTECCIÓN PERIMETRAL CON GARRAS DE MURO", "uni": "ML"},
+    {"n": 8, "esp": "PROTECCIÓN PERIMETRAL DE MURO PANTALLA", "uni": "ML"},
+    {"n": 9, "esp": "PROTECCIÓN HORIZONTAL CON REDES (HUECOS)", "uni": "M2"},
+    {"n": 10, "esp": "PROTECCIÓN VERTICAL CON REDES (HUECOS)", "uni": "M2"},
+    {"n": 11, "esp": "PRIMERA PUESTA DE HORCAS", "uni": "ML"},
+    {"n": 12, "esp": "ELEVACIÓN HORCAS", "uni": "ML"},
+    {"n": 13, "esp": "RED DE DESENCOFRADO", "uni": "ML"},
+    {"n": 14, "esp": "RED VERTICAL DE FACHADA", "uni": "M2"},
+    {"n": 15, "esp": "RED VERTICAL - ESCALERAS", "uni": "M2"},
+    {"n": 16, "esp": "PERÍMETRO CON BARANDILLAS EN ESCALERAS", "uni": "ML"},
+    {"n": 17, "esp": "RED EN VENTANAS", "uni": "UDS"},
+    {"n": 18, "esp": "LINEA DE VIDA HORIZONTAL (MOCHILA)", "uni": "UDS"},
+    {"n": 19, "esp": "LINEA DE VIDA VERTICAL (CUERDA)", "uni": "ML"},
+    {"n": 20, "esp": "PUNTOS DE ANCLAJE (TEXTILES)", "uni": "UDS"},
+    {"n": 21, "esp": "PUNTOS DE ANCLAJE (METÁLICOS)", "uni": "UDS"},
+    {"n": 22, "esp": "PUNTOS DE ANCLAJE CON CABO", "uni": "UDS"},
+    {"n": 23, "esp": "RED HORIZONTAL EN ESTRUCTURA DE HORMIGÓN", "uni": "M2"},
+    {"n": 24, "esp": "RED VERTICAL EN ESTRUCTURA DE HORMIGÓN", "uni": "M2"},
+    {"n": 25, "esp": "RED HORIZONTAL EN ESTRUCTURA METÁLICA", "uni": "M2"},
+    {"n": 26, "esp": "PERÍMETRO EN CUBIERTA EN ESTRUCTURA METÁLICA", "uni": "ML"},
+    {"n": 27, "esp": "PERÍMETRO CON 'T' DE MURO", "uni": "ML"},
+    {"n": 28, "esp": "MARQUESINA", "uni": "ML"},
+    {"n": 29, "esp": "PERÍMETRO CON RED A PILARES", "uni": "ML"},
+    {"n": 30, "RED TIPO PANTALLA": "RED TIPO PANTALLA", "uni": "ML"},
+    {"n": 31, "esp": "MOSQUITERA", "uni": "M2"},
+    {"n": 32, "esp": "LONA TIPO PLÁSTICO / RAFIA", "uni": "M2"},
+    {"n": 33, "esp": "PROTECCIÓN BARILLAS CON SETAS", "uni": "UDS"},
+    {"n": 34, "esp": "HORAS DE MANTENIMIENTO", "uni": "UDS"},
+    {"n": 35, "esp": "HORAS EXTRAS (FUERA DE JORNADA)", "uni": "UDS"},
+    {"n": 36, "esp": "HORAS EXTRAS FESTIVAS", "uni": "UDS"},
+    {"n": 37, "esp": "HORAS EXTRAS NOCTURNAS", "uni": "UDS"},
+    {"n": 38, "esp": "HORAS EXTRAS FESTIVAS NOCTURNAS", "uni": "UDS"}
+]
 
-# DICCIONARIO MULTILINGÜE DE LAS 38 PARTIDAS
-data_partidas = {
-    "Español": [
-        "1 - RED HORIZONTAL BAJO ENCOFRADO", "2 - PROTECCIÓN PERIMETRAL CON BARANDILLAS + MORDAZAS",
-        "3 - PROTECCIÓN PERIMETRAL CON BARANDILLAS + BASES", "4 - PROTECCIÓN PERIMETRAL CON BARANDILLAS + BASES (HUECOS)",
-        "5 - PROTECCIÓN PERIMETRAL CON BARANDILLAS + BASQUIS (HUECOS)", "6 - PROTECCIÓN PERIMETRAL CON BARANDILLAS + BASQUIS (MURO)",
-        "7 - PROTECCIÓN PERIMETRAL CON GARRAS DE MURO", "8 - PROTECCIÓN PERIMETRAL DE MURO PANTALLA",
-        "9 - PROTECCIÓN HORIZONTAL CON REDES (HUECOS)", "10 - PROTECCIÓN VERTICAL CON REDES (HUECOS)",
-        "11 - PRIMERA PUESTA DE HORCAS", "12 - ELEVACIÓN HORCAS", "13 - RED DE DESENCOFRADO",
-        "14 - RED VERTICAL DE FACHADA", "15 - RED VERTICAL - ESCALERAS", "16 - PERÍMETRO CON BARANDILLAS EN ESCALERAS",
-        "17 - RED EN VENTANAS", "18 - LINEA DE VIDA HORIZONTAL (MOCHILA)", "19 - LINEA DE VIDA VERTICAL (CUERDA)",
-        "20 - PUNTOS DE ANCLAJE (TEXTILES)", "21 - PUNTOS DE ANCLAJE (METÁLICOS)", "22 - PUNTOS DE ANCLAJE CON CABO",
-        "23 - RED HORIZONTAL EN ESTRUCTURA DE HORMIGÓN", "24 - RED VERTICAL EN ESTRUCTURA DE HORMIGÓN",
-        "25 - RED HORIZONTAL EN ESTRUCTURA METÁLICA", "26 - PERÍMETRO EN CUBIERTA EN ESTRUCTURA METÁLICA",
-        "27 - PERÍMETRO CON 'T' DE MURO", "28 - MARQUESINA", "29 - PERÍMETRO CON RED A PILARES",
-        "30 - RED TIPO PANTALLA", "31 - MOSQUITERA", "32 - LONA TIPO PLÁSTICO / RAFIA",
-        "33 - PROTECCIÓN BARILLAS CON SETAS", "34 - HORAS DE MANTENIMIENTO", "35 - HORAS EXTRAS (FUERA DE JORNADA)",
-        "36 - HORAS EXTRAS FESTIVAS", "37 - HORAS EXTRAS NOCTURNAS", "38 - HORAS EXTRAS FESTIVAS NOCTURNAS"
-    ],
-    "Marrouqui": [
-        "1 - شبكة أفقية تحت القوالب", "2 - حماية المحيط بالدرابزين + المشابك",
-        "3 - حماية المحيط بالدرابزين + القواعد", "4 - حماية المحيط بالدرابزين + القواعد (الفجوات)",
-        "5 - حماية المحيط بالدرابزين + باسكيس (الفجوات)", "6 - حماية المحيط بالدرابزين + باسكيس (الحائط)",
-        "7 - حماية المحيط مع مخالب الحائط", "8 - حماية المحيط لحائط الحجاب",
-        "9 - الحماية الأفقية بالشبكات (الفجوات)", "10 - الحماية العمودية بالشبكات (الفجوات)",
-        "11 - الوضع الأول للمشانق", "12 - رفع المشانق", "13 - شبكة إزالة القوالب",
-        "14 - شبكة الواجهة العمودية", "15 - شبكة عمودية - سلالم", "16 - المحيط مع درابزين في السلالم",
-        "17 - شبكة في النوافذ", "18 - حبل الحياة الأفقي (حقيبة)", "19 - حبل الحياة العمودي (حبل)",
-        "20 - نقاط مرساة (نسيج)", "21 - نقاط مرساة (معدنية)", "22 - نقاط مرساة مع كابل",
-        "23 - شبكة أفقية في الهيكل الخرساني", "24 - شبكة عمودية في الهيكل الخرساني",
-        "25 - شبكة أفقية في الهيكل المعدني", "26 - المحيط في سقف الهيكل المعدني",
-        "27 - المحيط مع حرف T للحائط", "28 - مظلة واقية", "29 - المحيط مع شبكة للأعمدة",
-        "30 - شبكة نوع الشاشة", "31 - ناموسية", "32 - قماش بلاستيك / رافيا",
-        "33 - حماية القضبان بالفطر", "34 - ساعات الصيانة", "35 - ساعات إضافية (خارج الدوام)",
-        "36 - ساعات إضافية في الأعياد", "37 - ساعات إضافية ليلية", "38 - ساعات إضافية ليلية في الأعياد"
-    ],
-    "English": [
-        "1 - UNDER-SLAB HORIZONTAL NET", "2 - PERIMETER PROTECTION WITH RAILINGS + CLAMPS",
-        "3 - PERIMETER PROTECTION WITH RAILINGS + BASES", "4 - PERIMETER PROTECTION WITH RAILINGS + BASES (VOIDS)",
-        "5 - PERIMETER PROTECTION WITH RAILINGS + BASQUIS (VOIDS)", "6 - PERIMETER PROTECTION WITH RAILINGS + BASQUIS (WALL)",
-        "7 - PERIMETER PROTECTION WITH WALL CLAWS", "8 - DIAPHRAGM WALL PERIMETER PROTECTION",
-        "9 - HORIZONTAL PROTECTION WITH NETS (VOIDS)", "10 - VERTICAL PROTECTION WITH NETS (VOIDS)",
-        "11 - FIRST SETTING OF GALLOWS", "12 - GALLOWS ELEVATION", "13 - STRIPPING NET",
-        "14 - VERTICAL FAÇADE NET", "15 - VERTICAL NET - STAIRS", "16 - PERIMETER WITH RAILINGS ON STAIRS",
-        "17 - WINDOW NETTING", "18 - HORIZONTAL LIFE LINE (BACKPACK)", "19 - VERTICAL LIFE LINE (ROPE)",
-        "20 - ANCHOR POINTS (TEXTILE)", "21 - ANCHOR POINTS (METALLIC)", "22 - ANCHOR POINTS WITH LANYARD",
-        "23 - HORIZONTAL NET IN CONCRETE STRUCTURE", "24 - VERTICAL NET IN CONCRETE STRUCTURE",
-        "25 - HORIZONTAL NET IN STEEL STRUCTURE", "26 - ROOF PERIMETER IN STEEL STRUCTURE",
-        "27 - PERIMETER WITH WALL 'T'", "28 - CANOPY", "29 - PERIMETER WITH NET TO PILLARS",
-        "30 - SCREEN TYPE NET", "31 - MOSQUITO NET", "32 - PLASTIC TARP / RAFFIA",
-        "33 - REBAR PROTECTION CAPS", "34 - MAINTENANCE HOURS", "35 - OVERTIME HOURS",
-        "36 - HOLIDAY OVERTIME", "37 - NIGHT OVERTIME", "38 - NIGHT HOLIDAY OVERTIME"
-    ]
+# --- INTERFAZ ---
+st.sidebar.image("https://www.gravityworks.eu/wp-content/uploads/2021/04/logo-gravity-works.png", width=180)
+lang = st.sidebar.selectbox("🌐 Idioma / Language", ["Español", "Marrouqui", "English"])
+
+ui = {
+    "Español": {"title": "Albarán de Obra", "worker": "Operario", "site": "Obra", "gen": "Generar Excel"},
+    "Marrouqui": {"title": "قائمة العمل", "worker": "عامل", "site": "ورشة", "gen": "إرسال"},
+    "English": {"title": "Work Report", "worker": "Worker", "site": "Site", "gen": "Generate Excel"}
 }
 
-# Interfaz de Selección de Idioma
-st.sidebar.image("https://www.gravityworks.eu/wp-content/uploads/2021/04/logo-gravity-works.png", width=200)
-lang = st.sidebar.selectbox("🌐 Seleccione Idioma / Choose Language", ["Español", "Marrouqui", "English"])
+st.title(f"🏗️ {ui[lang]['title']}")
 
-# Textos de la Interfaz
-ui_texts = {
-    "Español": {"title": "Parte de Trabajo Digital", "header": "Datos Generales", "worker": "Nombre del Operario", "site": "Nombre de la Obra", "submit": "Generar Excel", "success": "¡Generado con éxito!"},
-    "Marrouqui": {"title": "تقرير العمل الرقمي", "header": "بيانات عامة", "worker": "اسم العامل", "site": "اسم المشروع", "submit": "إنشاء إكسل", "success": "تم بنجاح!"},
-    "English": {"title": "Digital Work Report", "header": "General Data", "worker": "Worker Name", "site": "Site Name", "submit": "Generate Excel", "success": "Success!"}
-}
-
-st.title(ui_texts[lang]["title"])
-
-# Formulario de Datos
-with st.form("main_form"):
-    st.subheader(ui_texts[lang]["header"])
-    col1, col2 = st.columns(2)
-    with col1:
-        worker_name = st.text_input(ui_texts[lang]["worker"], placeholder="Ej: Juan Pérez")
-        obra_name = st.text_input(ui_texts[lang]["site"], placeholder="Ej: Obra Sabadell Centra")
-    with col2:
-        fecha = st.date_input("Fecha / التاريخ", datetime.now())
-        planta = st.text_input("Edificio / Planta / المبنى")
-
-    st.divider()
-    st.subheader("Items / Partidas / بنود")
+with st.form("albaran_form"):
+    c1, c2 = st.columns(2)
+    worker = c1.text_input(ui[lang]['worker'], placeholder="Ej: Juan Pérez")
+    site = c2.text_input(ui[lang]['site'], placeholder="Ej: Obra Sabadell")
+    date = st.date_input("Fecha", datetime.now())
     
-    # Recogemos las cantidades de las 38 partidas
+    st.divider()
     respuestas = {}
-    items_list = data_partidas[lang]
-    
-    # Dividimos en 2 columnas para que sea más corto el scroll
-    c_part1, c_part2 = st.columns(2)
-    for i, item in enumerate(items_list):
-        with c_part1 if i < 19 else c_part2:
-            respuestas[data_partidas["Español"][i]] = st.number_input(item, min_value=0.0, step=0.5, key=f"item_{i}")
 
-    st.divider()
-    comentarios = st.text_area("Otros Conceptos / Material Roto")
+    # --- CAPÍTULO 1: REDES Y SEGURIDAD ---
+    with st.expander("🛡️ CAP 1: REDES Y SEGURIDAD (1-10)", expanded=False):
+        for i in range(0, 10):
+            p = partidas_info[i]
+            respuestas[p['n']] = st.number_input(f"{p['n']}. {p['esp']} ({p['uni']})", min_value=0.0, step=0.1, key=f"it_{p['n']}")
 
-    # --- ESTO VA DENTRO DEL FORMULARIO ---
-    submitted = st.form_submit_button(ui_texts[lang]["submit"])
+    # --- CAPÍTULO 2: HORCAS Y VERTICALES ---
+    with st.expander("🏗️ CAP 2: HORCAS Y VERTICALES (11-15)", expanded=False):
+        for i in range(10, 15):
+            p = partidas_info[i]
+            respuestas[p['n']] = st.number_input(f"{p['n']}. {p['esp']} ({p['uni']})", min_value=0.0, step=0.1, key=f"it_{p['n']}")
 
-# --- ESTO VA FUERA DEL FORMULARIO (Saca la sangría/identación) ---
+    # --- CAPÍTULO 3: PERÍMETROS Y ESCALERAS ---
+    with st.expander("🚧 CAP 3: PERÍMETROS Y ESCALERAS", expanded=False):
+        indices_cap3 = [15, 16, 18, 25, 26, 27, 28, 29] # Partidas 16, 17, 19, 26, 27, 28, 29, 30
+        for idx in indices_cap3:
+            p = partidas_info[idx]
+            respuestas[p['n']] = st.number_input(f"{p['n']}. {p['esp']} ({p['uni']})", min_value=0.0, step=0.1, key=f"it_{p['n']}")
+
+    # --- CAPÍTULO 4: ANCLAJE Y OTROS ---
+    with st.expander("🔩 CAP 4: ANCLAJE Y OTROS", expanded=False):
+        indices_cap4 = [17, 19, 20, 21, 22, 23, 24, 30, 31, 32] # Partidas 18, 20, 21, 22, 23, 24, 25, 31, 32, 33
+        for idx in indices_cap4:
+            p = partidas_info[idx]
+            respuestas[p['n']] = st.number_input(f"{p['n']}. {p['esp']} ({p['uni']})", min_value=0.0, step=0.1, key=f"it_{p['n']}")
+
+    # --- CAPÍTULO 5: MANTENIMIENTO Y HORAS (Abierto por defecto) ---
+    with st.expander("🕒 CAP 5: MANTENIMIENTO Y HORAS EXTRAS", expanded=True):
+        for i in range(33, 38): # Partidas 34 a 38
+            p = partidas_info[i]
+            respuestas[p['n']] = st.number_input(f"{p['n']}. {p['esp']} ({p['uni']})", min_value=0.0, step=0.5, key=f"it_{p['n']}")
+
+    submitted = st.form_submit_button(ui[lang]['gen'])
+
+# --- PROCESO FUERA DEL FORMULARIO ---
 if submitted:
-    if not worker_name or not obra_name:
-        st.error("Por favor, rellena el nombre del operario y la obra.")
+    if not worker or not site:
+        st.error("Rellena Operario y Obra")
     else:
-        # 1. Crear DataFrame filtrando solo lo que tenga cantidad > 0
-        df = pd.DataFrame([
-            {"Partida": k, "Cantidad": v} for k, v in respuestas.items() if v > 0
-        ])
+        final_data = []
+        for p in partidas_info:
+            val = respuestas[p['n']]
+            if val > 0:
+                final_data.append({"Ítem": p['n'], "Descripción": p['esp'], "Cantidad": val, "Unidad": p['uni']})
         
-        if df.empty:
-            st.warning("No has introducido ninguna cantidad.")
+        if not final_data:
+            st.warning("No hay datos introducidos")
         else:
-            # 2. Generar Excel en memoria
+            df = pd.DataFrame(final_data)
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                df.to_excel(writer, index=False, sheet_name='Albaran')
-                
-                # Formatos estéticos
-                workbook = writer.book
-                worksheet = writer.sheets['Albaran']
-                header_format = workbook.add_format({'bold': True, 'bg_color': '#003366', 'font_color': 'white'})
-                
-                for col_num, value in enumerate(df.columns.values):
-                    worksheet.write(0, col_num, value, header_format)
-                worksheet.set_column('A:A', 60) # Ajustar ancho de columna
+                df.to_excel(writer, index=False, sheet_name='GravityWorks')
+                wb = writer.book
+                ws = writer.sheets['GravityWorks']
+                fmt = wb.add_format({'bold': True, 'bg_color': '#003366', 'font_color': 'white'})
+                for col, val in enumerate(df.columns):
+                    ws.write(0, col, val, fmt)
+                ws.set_column('B:B', 50) # Ancho para descripción
             
-            # 3. Nombre del archivo
-            file_name = f"{obra_name.replace(' ','_')}_{fecha}_{worker_name.replace(' ','_')}.xlsx"
-            
-            # 4. Mostrar éxito y Botón de Descarga (FUERA del form)
-            st.success(ui_texts[lang]["success"])
-            st.download_button(
-                label=f"📥 {ui_texts[lang]['submit']} (Excel)",
-                data=output.getvalue(),
-                file_name=file_name,
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+            fname = f"{site.replace(' ','_')}_{date}_{worker.replace(' ','_')}.xlsx"
+            st.success("¡Albarán generado!")
+            st.download_button("📥 Descargar Excel para Gerencia", output.getvalue(), file_name=fname)
