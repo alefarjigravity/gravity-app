@@ -2,16 +2,15 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import io
-import urllib.parse
+import base64
 from streamlit_drawable_canvas import st_canvas
 from fpdf import FPDF
 from PIL import Image
-import os
 
-# Configuración
+# Configuración de la App
 st.set_page_config(page_title="Gravity Works Pro", page_icon="🏗️")
 
-# --- BASE DE DATOS MAESTRA ---
+# --- BASE DE DATOS (38 PARTIDAS) ---
 partidas_master = [
     [1, "RED HORIZONTAL BAJO ENCOFRADO", "شبكة أفقية تحت القوالب", "UNDER-SLAB HORIZONTAL NET", "M2"],
     [2, "PROTECCIÓN PERIMETRAL CON BARANDILLAS + MORDAZAS", "حماية المحيط بالدرابزين + المشابك", "PERIMETER PROTECTION + CLAMPS", "ML"],
@@ -53,7 +52,7 @@ partidas_master = [
     [38, "HORAS EXTRAS FESTIVAS NOCTURNAS", "إضافي ليلي أعياد", "NIGHT HOLIDAY OVERTIME", "UDS"]
 ]
 
-# --- TRADUCCIONES ---
+# --- TRADUCCIONES UI ---
 ui = {
     "Español": {"t": "Albarán Digital", "op": "Operario", "ob": "Obra", "btn": "GENERAR DOCUMENTOS", "obs": "Observaciones", "sign": "Firma del Responsable", "c1": "CAP 1: REDES Y SEGURIDAD", "c2": "CAP 2: HORCAS Y VERTICALES", "c3": "CAP 3: PERÍMETROS", "c4": "CAP 4: ANCLAJES Y OTROS", "c5": "CAP 5: HORAS EXTRAS"},
     "Marrouqui": {"t": "قائمة العمل الرقمية", "op": "عامل", "ob": "ورشة", "btn": "إنشاء المستندات", "obs": "ملاحظات", "sign": "توقيع المسؤول", "c1": "1: الحماية", "c2": "2: المشانق", "c3": "3: المحيط", "c4": "4: المراسي", "c5": "5: ساعات إضافية"},
@@ -72,98 +71,128 @@ site = c2.text_input(ui[lang]["ob"])
 date = st.date_input("Fecha", datetime.now())
 
 st.divider()
-resp = {}
+res = {}
 
-# CAPÍTULOS
+# --- CAPÍTULOS (TODOS CERRADOS) ---
 with st.expander(ui[lang]["c1"], expanded=False):
     for i in range(0, 10):
         p = partidas_master[i]
-        resp[p[0]] = st.number_input(f"{p[0]}. {p[l_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
+        res[p[0]] = st.number_input(f"{p[0]}. {p[l_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
 
 with st.expander(ui[lang]["c2"], expanded=False):
     for i in range(10, 15):
         p = partidas_master[i]
-        resp[p[0]] = st.number_input(f"{p[0]}. {p[l_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
+        res[p[0]] = st.number_input(f"{p[0]}. {p[l_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
 
 with st.expander(ui[lang]["c3"], expanded=False):
     idx_c3 = [15, 16, 18, 25, 26, 27, 28, 29]
     for idx in idx_c3:
         p = partidas_master[idx]
-        resp[p[0]] = st.number_input(f"{p[0]}. {p[l_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
+        res[p[0]] = st.number_input(f"{p[0]}. {p[l_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
 
 with st.expander(ui[lang]["c4"], expanded=False):
     idx_c4 = [17, 19, 20, 21, 22, 23, 24, 30, 31, 32]
     for idx in idx_c4:
         p = partidas_master[idx]
-        resp[p[0]] = st.number_input(f"{p[0]}. {p[l_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
+        res[p[0]] = st.number_input(f"{p[0]}. {p[l_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
 
 with st.expander(ui[lang]["c5"], expanded=False):
     for i in range(33, 38):
         p = partidas_master[i]
-        resp[p[0]] = st.number_input(f"{p[0]}. {p[l_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
+        res[p[0]] = st.number_input(f"{p[0]}. {p[l_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
 
 obs = st.text_area(ui[lang]["obs"])
 
-# FIRMA
+# --- FIRMA ---
 st.subheader(ui[lang]["sign"])
 canvas_result = st_canvas(
     stroke_width=3, stroke_color="#000000", background_color="#eeeeee",
     height=150, width=400, drawing_mode="freedraw", key="canvas"
 )
 
+# --- FUNCIÓN DE COMPARTIR NATIVO (JS) ---
+def create_share_button(file_bytes, file_name, label, color):
+    b64 = base64.b64encode(file_bytes).decode()
+    button_uuid = "".join(filter(str.isalnum, label))
+    html_code = f"""
+        <script>
+        async function share_{button_uuid}() {{
+            const base64Data = "{b64}";
+            const fileName = "{file_name}";
+            const res = await fetch(`data:application/octet-stream;base64,${{base64Data}}`);
+            const blob = await res.blob();
+            const file = new File([blob], fileName, {{ type: blob.type }});
+
+            if (navigator.canShare && navigator.canShare({{ files: [file] }})) {{
+                try {{
+                    await navigator.share({{
+                        files: [file],
+                        title: 'Gravity Works',
+                        text: 'Adjunto envío albarán.',
+                    }});
+                }} catch (err) {{
+                    console.error("Error al compartir:", err);
+                }}
+            }} else {{
+                alert("Navegador no compatible con Compartir Directo. Prueba usando Chrome o Safari en tu móvil.");
+            }}
+        }}
+        </script>
+        <button onclick="share_{button_uuid}()" style="width:100%; background-color:{color}; color:white; border:none; padding:15px; border-radius:10px; font-weight:bold; cursor:pointer; font-size:16px; margin-bottom:10px;">
+            {label}
+        </button>
+    """
+    return st.components.v1.html(html_code, height=80)
+
+# --- BOTÓN DE PROCESO ---
 if st.button(ui[lang]["btn"]):
     if not worker or not site:
-        st.error("Faltan datos")
+        st.error("Faltan datos de Operario u Obra")
     else:
-        # Generar datos en ESPAÑOL
-        rows = [{"Cód": p[0], "Descripción": p[1], "Cant": resp[p[0]], "Uni": p[4]} for p in partidas_master if resp[p[0]] > 0]
-        df = pd.DataFrame(rows)
+        # 1. Datos siempre en ESPAÑOL
+        data_rows = [{"Cód": p[0], "Descripción": p[1], "Cant": res[p[0]], "Uni": p[4]} for p in partidas_master if res[p[0]] > 0]
+        df = pd.DataFrame(data_rows)
         
-        # Procesar Firma
+        # 2. Firma
         img_firma = Image.fromarray(canvas_result.image_data.astype('uint8'), 'RGBA')
-        img_byte = io.BytesIO()
-        img_firma.save(img_byte, format="PNG")
+        img_io = io.BytesIO()
+        img_firma.save(img_io, format="PNG")
         
-        # --- EXCEL ---
+        # --- GENERAR EXCEL ---
         xlsx_io = io.BytesIO()
         with pd.ExcelWriter(xlsx_io, engine='xlsxwriter') as writer:
             df.to_excel(writer, index=False, sheet_name='Albaran', startrow=5)
             wb, ws = writer.book, writer.sheets['Albaran']
-            b_f = wb.add_format({'bold': True})
-            ws.write(0, 0, f"OPERARIO: {worker.upper()}", b_f)
-            ws.write(1, 0, f"OBRA: {site.upper()}", b_f)
-            ws.write(2, 0, f"FECHA: {date}", b_f)
-            ws.insert_image(len(df)+10, 0, 'f.png', {'image_data': img_byte, 'x_scale': 0.4, 'y_scale': 0.4})
+            bold = wb.add_format({'bold': True})
+            ws.write(0, 0, f"OPERARIO: {worker.upper()}", bold)
+            ws.write(1, 0, f"OBRA: {site.upper()}", bold)
+            ws.write(2, 0, f"FECHA: {date.strftime('%d/%m/%Y')}", bold)
+            ws.insert_image(len(df)+10, 0, 'f.png', {'image_data': img_io, 'x_scale': 0.4, 'y_scale': 0.4})
             ws.set_column('B:B', 50)
         
-        # --- PDF ---
+        # --- GENERAR PDF ---
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", 'B', 14)
-        pdf.cell(0, 10, "GRAVITY WORKS - ALBARAN", 0, 1, 'C')
-        pdf.set_font("Arial", '', 10)
+        pdf.cell(0, 10, "GRAVITY WORKS - PARTE DE TRABAJO", 0, 1, 'C')
         pdf.ln(5)
+        pdf.set_font("Arial", '', 10)
         pdf.cell(0, 7, f"Operario: {worker}", 0, 1)
         pdf.cell(0, 7, f"Obra: {site}", 0, 1)
         pdf.ln(5)
         for _, r in df.iterrows():
             pdf.cell(0, 7, f"{r['Cód']} - {r['Descripción']}: {r['Cant']} {r['Uni']}", 0, 1)
         pdf.ln(5)
-        pdf.multi_cell(0, 5, f"Obs: {obs}")
-        with open("f_temp.png", "wb") as f: f.write(img_byte.getvalue())
-        pdf.image("f_temp.png", w=50)
-        pdf_bytes = pdf.output(dest='S').encode('latin1')
+        pdf.multi_cell(0, 5, f"Observaciones: {obs}")
+        with open("temp_f.png", "wb") as f: f.write(img_io.getvalue())
+        pdf.image("temp_f.png", w=50)
+        pdf_out = pdf.output(dest='S').encode('latin1')
 
-        # --- MOSTRAR BOTONES DE DESCARGA ---
-        st.success("✅ ¡Hecho! Descarga y comparte:")
-        f_name = f"{worker}_{site}_{date.strftime('%d-%m')}"
+        # --- NOMBRES DE ARCHIVO ---
+        f_name = f"{worker.replace(' ','_')}_{site.replace(' ','_')}_{date.strftime('%d-%m-%Y')}"
+
+        st.success("✅ Documentos listos. Pulsa para enviar:")
         
-        col_ex, col_pdf = st.columns(2)
-        with col_ex:
-            st.download_button("📊 EXCEL (Interno)", xlsx_io.getvalue(), f"{f_name}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        with col_pdf:
-            st.download_button("📄 PDF (Cliente)", pdf_bytes, f"{f_name}.pdf", "application/pdf")
-        
-        # Link WhatsApp Rápido
-        msg = f"Hola, envío albarán de {worker} en obra {site}."
-        st.markdown(f'<a href="https://wa.me/?text={urllib.parse.quote(msg)}" target="_blank"><button style="width:100%;background:#25D366;color:white;border:none;padding:10px;border-radius:5px;cursor:pointer;">📱 AVISAR POR WHATSAPP</button></a>', unsafe_allow_html=True)
+        # --- BOTONES DE COMPARTIR NATIVO ---
+        create_share_button(xlsx_io.getvalue(), f"{f_name}.xlsx", "📊 COMPARTIR EXCEL (Interno)", "#003366")
+        create_share_button(pdf_out, f"{f_name}.pdf", "📄 COMPARTIR PDF (Cliente)", "#c0392b")
