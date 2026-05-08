@@ -3,24 +3,20 @@ import pandas as pd
 from datetime import datetime
 import io
 import base64
-import requests
 from streamlit_drawable_canvas import st_canvas
 from fpdf import FPDF
 from PIL import Image
-
-# URL del logo de Gravity Works
-LOGO_URL = "https://www.gravityworks.eu/wp-content/uploads/2021/04/logo-gravity-works.png"
-
-# Función para descargar la imagen del logo
-def get_logo_bytes():
-    try:
-        response = requests.get(LOGO_URL)
-        return io.BytesIO(response.content)
-    except:
-        return None
+import os
 
 # Configuración de la App
 st.set_page_config(page_title="Gravity Works Pro+", page_icon="🏗️")
+
+# --- FUNCIÓN PARA CARGAR LOGO LOCAL ---
+def cargar_logo():
+    # Buscamos el archivo logo.png en tu carpeta de GitHub
+    if os.path.exists("logo.png"):
+        return "logo.png"
+    return None
 
 # --- BASE DE DATOS (38 PARTIDAS) ---
 partidas_master = [
@@ -74,10 +70,12 @@ ui = {
 lang = st.sidebar.selectbox("🌐 Seleccione Idioma", ["Español", "Marrouqui", "English"])
 l_idx = {"Español": 1, "Marrouqui": 2, "English": 3}[lang]
 
-# --- CABECERA APP CON LOGO ---
+# --- CABECERA APP CON LOGO LOCAL ---
+path_logo = cargar_logo()
 col_logo, col_title = st.columns([1, 4])
 with col_logo:
-    st.image(LOGO_URL, width=100)
+    if path_logo:
+        st.image(path_logo, width=120)
 with col_title:
     st.title(ui[lang]["t"])
 
@@ -120,7 +118,7 @@ with st.expander(ui[lang]["c5"], expanded=False):
 
 obs = st.text_area(ui[lang]["obs"])
 
-# --- SECCIÓN DE FIRMA ---
+# --- FIRMA ---
 st.subheader(ui[lang]["sign"])
 canvas_result = st_canvas(
     stroke_width=3, stroke_color="#000000", background_color="#eeeeee",
@@ -155,9 +153,9 @@ if st.button(ui[lang]["btn"]):
     if not worker or not site or not resp_name:
         st.error("Rellene Operario, Obra y Nombre del Responsable")
     elif canvas_result.image_data is None:
-        st.warning("Debe firmar antes de generar los documentos.")
+        st.warning("Debe firmar antes de continuar.")
     else:
-        # Filtrar datos (Español)
+        # Filtrar datos (Siempre en Español para Docs)
         df_rows = [{"Cód": p[0], "Descripción": p[1], "Cant": res_vals[p[0]], "Uni": p[4]} for p in partidas_master if res_vals[p[0]] > 0]
         df = pd.DataFrame(df_rows)
         
@@ -166,9 +164,6 @@ if st.button(ui[lang]["btn"]):
         img_io = io.BytesIO()
         img_f.save(img_io, format="PNG")
         
-        # Obtener Logo
-        logo_data = get_logo_bytes()
-        
         # --- EXCEL ---
         xls_io = io.BytesIO()
         with pd.ExcelWriter(xls_io, engine='xlsxwriter') as writer:
@@ -176,15 +171,15 @@ if st.button(ui[lang]["btn"]):
             wb, ws = writer.book, writer.sheets['Albaran']
             bold = wb.add_format({'bold': True})
             
-            # Insertar Logo en Excel (Celda D1 - arriba a la derecha para que no estorbe)
-            if logo_data:
-                ws.insert_image('D1', 'logo.png', {'image_data': logo_data, 'x_scale': 0.15, 'y_scale': 0.15})
+            # Logo en Excel
+            if path_logo:
+                ws.insert_image('D1', path_logo, {'x_scale': 0.18, 'y_scale': 0.18})
             
             ws.write(0, 0, f"OPERARIO: {worker.upper()}", bold)
             ws.write(1, 0, f"OBRA: {site.upper()}", bold)
             ws.write(2, 0, f"FECHA: {date.strftime('%d/%m/%Y')}", bold)
             
-            # Firma
+            # Firma y Aclaración
             ws.write(len(df)+10, 0, "FIRMA DEL RESPONSABLE:", bold)
             ws.insert_image(len(df)+11, 0, 'f.png', {'image_data': img_io, 'x_scale': 0.4, 'y_scale': 0.4})
             ws.write(len(df)+17, 0, f"ACLARACIÓN: {resp_name.upper()}", bold)
@@ -194,13 +189,12 @@ if st.button(ui[lang]["btn"]):
         pdf = FPDF()
         pdf.add_page()
         
-        # Logo en PDF (Arriba a la izquierda)
-        if logo_data:
-            with open("temp_logo.png", "wb") as f: f.write(logo_data.getvalue())
-            pdf.image("temp_logo.png", x=10, y=8, w=30)
+        # Logo en PDF
+        if path_logo:
+            pdf.image(path_logo, x=10, y=8, w=35)
         
         pdf.set_font("Arial", 'B', 14)
-        pdf.set_x(45) # Desplazar título a la derecha del logo
+        pdf.set_x(50)
         pdf.cell(0, 10, "GRAVITY WORKS - ALBARAN DE TRABAJO", 0, 1, 'L')
         
         pdf.ln(10)
@@ -214,7 +208,7 @@ if st.button(ui[lang]["btn"]):
             pdf.cell(0, 7, f"{r['Cód']} - {r['Descripción']}: {r['Cant']} {r['Uni']}", 0, 1)
         
         pdf.ln(5)
-        pdf.multi_cell(0, 5, f"Obs: {obs}")
+        pdf.multi_cell(0, 5, f"Observaciones: {obs}")
         
         # Firma PDF
         with open("tf.png", "wb") as f: f.write(img_io.getvalue())
@@ -226,7 +220,7 @@ if st.button(ui[lang]["btn"]):
         
         pdf_out = pdf.output(dest='S').encode('latin1')
 
-        st.success("✅ ¡Documentos con logo generados!")
+        st.success("✅ ¡Documentos generados!")
         f_name = f"{worker.replace(' ','_')}_{site.replace(' ','_')}_{date.strftime('%d-%m-%Y')}"
         
         create_share_button(xls_io.getvalue(), f"{f_name}.xlsx", "📊 COMPARTIR EXCEL (Administración)", "#003366")
