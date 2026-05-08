@@ -4,4 +4,4 @@ xlsxwriter
 streamlit-drawable-canvas
 fpdf
 Pillow
-requests
+
