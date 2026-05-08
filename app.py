@@ -3,11 +3,11 @@ import pandas as pd
 from datetime import datetime
 import io
 import urllib.parse
+import base64
 
 st.set_page_config(page_title="Gravity Works - Pro", page_icon="🏗️")
 
 # --- BASE DE DATOS TRILINGÜE (38 PARTIDAS) ---
-# Hemos asegurado que cada comilla esté en su sitio para evitar el SyntaxError
 partidas_master = [
     [1, "RED HORIZONTAL BAJO ENCOFRADO", "شبكة أفقية تحت القوالب", "UNDER-SLAB HORIZONTAL NET", "M2"],
     [2, "PROTECCIÓN PERIMETRAL CON BARANDILLAS + MORDAZAS", "حماية المحيط بالدرابزين + المشابك", "PERIMETER PROTECTION + CLAMPS", "ML"],
@@ -52,7 +52,6 @@ partidas_master = [
 # --- INTERFAZ ---
 st.sidebar.image("https://www.gravityworks.eu/wp-content/uploads/2021/04/logo-gravity-works.png", width=180)
 lang_choice = st.sidebar.selectbox("🌐 Seleccione Idioma", ["Español", "Marrouqui", "English"])
-# Mapeo de columna según idioma
 lang_idx = {"Español": 1, "Marrouqui": 2, "English": 3}[lang_choice]
 
 ui = {
@@ -63,7 +62,6 @@ ui = {
 
 st.title(ui[lang_choice]["t"])
 
-# Iniciamos el Formulario
 with st.form("main_form"):
     c1, c2 = st.columns(2)
     worker = c1.text_input(ui[lang_choice]["op"])
@@ -73,74 +71,42 @@ with st.form("main_form"):
     st.divider()
     respuestas = {}
     
-    # CAPÍTULO 1 (Ítems 1-10)
+    # --- CAPÍTULOS (Cambio 2: Step=1 para sumas enteras) ---
     with st.expander(ui[lang_choice]["c1"], expanded=False):
         for i in range(0, 10):
             p = partidas_master[i]
-            respuestas[p[0]] = st.number_input(f"{p[0]}. {p[lang_idx]} ({p[4]})", min_value=0.0, step=0.1, key=f"p_{p[0]}")
+            respuestas[p[0]] = st.number_input(f"{p[0]}. {p[lang_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
 
-    # CAPÍTULO 2 (Ítems 11-15)
     with st.expander(ui[lang_choice]["c2"], expanded=False):
         for i in range(10, 15):
             p = partidas_master[i]
-            respuestas[p[0]] = st.number_input(f"{p[0]}. {p[lang_idx]} ({p[4]})", min_value=0.0, step=0.1, key=f"p_{p[0]}")
+            respuestas[p[0]] = st.number_input(f"{p[0]}. {p[lang_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
 
-    # CAPÍTULO 3 (Lógica de perímetros)
     with st.expander(ui[lang_choice]["c3"], expanded=False):
-        idx_c3 = [15, 16, 18, 25, 26, 27, 28, 29]
-        for idx in idx_c3:
+        indices_c3 = [15, 16, 18, 25, 26, 27, 28, 29]
+        for idx in indices_c3:
             p = partidas_master[idx]
-            respuestas[p[0]] = st.number_input(f"{p[0]}. {p[lang_idx]} ({p[4]})", min_value=0.0, step=0.1, key=f"p_{p[0]}")
+            respuestas[p[0]] = st.number_input(f"{p[0]}. {p[lang_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
 
-    # CAPÍTULO 4 (Anclajes y Otros)
     with st.expander(ui[lang_choice]["c4"], expanded=False):
-        idx_c4 = [17, 19, 20, 21, 22, 23, 24, 30, 31, 32]
-        for idx in idx_c4:
+        indices_c4 = [17, 19, 20, 21, 22, 23, 24, 30, 31, 32]
+        for idx in indices_c4:
             p = partidas_master[idx]
-            respuestas[p[0]] = st.number_input(f"{p[0]}. {p[lang_idx]} ({p[4]})", min_value=0.0, step=0.1, key=f"p_{p[0]}")
+            respuestas[p[0]] = st.number_input(f"{p[0]}. {p[lang_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
 
-    # CAPÍTULO 5 (Horas - ABIERTO POR DEFECTO)
     with st.expander(ui[lang_choice]["c5"], expanded=True):
         for i in range(33, 38):
             p = partidas_master[i]
-            respuestas[p[0]] = st.number_input(f"{p[0]}. {p[lang_idx]} ({p[4]})", min_value=0.0, step=0.5, key=f"p_{p[0]}")
+            respuestas[p[0]] = st.number_input(f"{p[0]}. {p[lang_idx]} ({p[4]})", min_value=0, step=1, key=f"p_{p[0]}")
 
     obs = st.text_area(ui[lang_choice]["obs"])
-    
-    # EL BOTÓN DE ENVIAR DEBE ESTAR AQUÍ DENTRO (Última línea del with st.form)
     submitted = st.form_submit_button(ui[lang_choice]["btn"])
 
-# --- LÓGICA TRAS PULSAR ENVIAR (FUERA DEL FORMULARIO) ---
-if submitted:
-    if not worker or not site:
-        st.error("Por favor, rellena el nombre del operario y la obra.")
-    else:
-        # Generamos la lista de lo que se ha trabajado
-        datos_informe = []
-        for p in partidas_master:
-            cantidad = respuestas[p[0]]
-            if cantidad > 0:
-                datos_informe.append({
-                    "Cód": p[0], 
-                    "Descripción": p[lang_idx], 
-                    "Cant": cantidad, 
-                    "Uni": p[4]
-                })
-        
-        if not datos_informe and not obs:
-            st.warning("No hay datos para generar el albarán.")
-        else:
-            df = pd.DataFrame(datos_informe)
-
-import base64  # Necesario para procesar el archivo para el botón de compartir
-
-# ... (Todo tu código anterior de partidas y capítulos se mantiene igual) ...
-
+# --- PROCESO ---
 if submitted:
     if not worker or not site:
         st.error("Rellene los datos básicos")
     else:
-        # 1. Generar el Excel (Igual que antes)
         final_list = []
         for p in partidas_master:
             cant = respuestas[p[0]]
@@ -162,25 +128,29 @@ if submitted:
             
             for col_num, value in enumerate(df.columns.values):
                 worksheet.write(5, col_num, value, header_fmt)
+            
             if obs:
                 worksheet.write(len(df)+7, 0, "OBSERVACIONES:", bold)
                 worksheet.write(len(df)+8, 0, obs)
             worksheet.set_column('B:B', 45)
 
-        excel_bytes = output.getvalue()
-        file_name = f"Albaran_{site}_{date.strftime('%d%m')}.xlsx"
-        
-        # --- MAGIA DEL BOTÓN COMPARTIR ---
-        # Convertimos el Excel a un formato que el navegador entienda (Base64)
-        b64_excel = base64.b64encode(excel_bytes).decode()
-        
-        st.success("✅ Albarán listo.")
+        # --- Cambio 1: Formato de nombre solicitado ---
+        clean_worker = worker.replace(' ', '_')
+        clean_site = site.replace(' ', '_')
+        clean_date = date.strftime('%d-%m-%Y')
+        file_name = f"{clean_worker}_{clean_site}_{clean_date}.xlsx"
 
-        # Botón de Descarga normal (Como respaldo)
-        st.download_button("📥 1. Descargar Archivo", excel_bytes, file_name=file_name)
-
-        # BOTÓN COMPARTIR NATIVO (Solo para móviles)
-        # Este código le dice al móvil: "Abre tu menú de compartir con este archivo"
+        st.success("✅ Excel generado")
+        
+        # Botón descarga
+        st.download_button("📥 DESCARGAR EXCEL", output.getvalue(), file_name=file_name)
+        
+        # WhatsApp Link con el nuevo nombre en el mensaje
+        msg = f"Hola, envío albarán.\n👷 {worker}\n🏗️ {site}\n📅 {clean_date}"
+        ws_url = f"https://wa.me/?text={urllib.parse.quote(msg)}"
+        
+        # Botón compartir
+        b64_excel = base64.b64encode(output.getvalue()).decode()
         share_script = f"""
             <script>
             async function compartir() {{
@@ -197,16 +167,12 @@ if submitted:
                             title: 'Albarán Gravity Works',
                             text: 'Envío parte de trabajo adjunto.',
                         }});
-                    }} catch (err) {{
-                        console.error("Error al compartir:", err);
-                    }}
-                }} else {{
-                    alert("Tu navegador no soporta la función de compartir archivos directamente.");
-                }}
+                    }} catch (err) {{ console.error(err); }}
+                }} else {{ window.open("{ws_url}", "_blank"); }}
             }}
             </script>
-            <button onclick="compartir()" style="width:100%; background-color:#ffcc00; color:#003366; border:none; padding:15px; border-radius:10px; font-weight:bold; cursor:pointer; font-size:16px;">
-                🔗 2. COMPARTIR (WhatsApp, Email...)
+            <button onclick="compartir()" style="width:100%; background-color:#25D366; color:white; border:none; padding:15px; border-radius:10px; font-weight:bold; cursor:pointer; margin-top:10px;">
+                📱 2. COMPARTIR POR WHATSAPP
             </button>
         """
         st.components.v1.html(share_script, height=100)
